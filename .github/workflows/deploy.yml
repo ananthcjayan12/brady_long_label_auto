@@ -7,25 +7,24 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+env:
+  PROJECT_NAME: brady-text-auto-label
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       deployments: write
-    env:
-      CLOUDFLARE_PROJECT_NAME: qr-label-print-template
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
           node-version: '20'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
 
       - name: Install Dependencies
         working-directory: ./frontend
@@ -35,55 +34,19 @@ jobs:
         working-directory: ./frontend
         run: npm run build
 
-      - name: Ensure Cloudflare Pages Project Exists
-        if: github.event_name != 'pull_request'
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          API_BASE="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects"
-          AUTH_HEADER="Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"
-
-          STATUS_CODE=$(curl -sS -o /tmp/cf_project_check.json -w "%{http_code}" \
-            -H "$AUTH_HEADER" \
-            -H "Content-Type: application/json" \
-            "${API_BASE}/${CLOUDFLARE_PROJECT_NAME}")
-
-          if [ "${STATUS_CODE}" = "200" ]; then
-            echo "Cloudflare Pages project '${CLOUDFLARE_PROJECT_NAME}' already exists."
-            exit 0
-          fi
-
-          if [ "${STATUS_CODE}" != "404" ]; then
-            echo "Unexpected response checking project (${STATUS_CODE})."
-            cat /tmp/cf_project_check.json
-            exit 1
-          fi
-
-          echo "Project '${CLOUDFLARE_PROJECT_NAME}' not found. Creating it now."
-          curl -sS -X POST \
-            -H "$AUTH_HEADER" \
-            -H "Content-Type: application/json" \
-            "${API_BASE}" \
-            --data "{\"name\":\"${CLOUDFLARE_PROJECT_NAME}\",\"production_branch\":\"main\"}" \
-            > /tmp/cf_project_create.json
-
-          if ! grep -q "\"success\":true" /tmp/cf_project_create.json; then
-            echo "Failed to create Cloudflare Pages project."
-            cat /tmp/cf_project_create.json
-            exit 1
-          fi
-
-          echo "Created Cloudflare Pages project '${CLOUDFLARE_PROJECT_NAME}'."
+      - name: Create Cloudflare Pages project if not exists
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages project create ${{ env.PROJECT_NAME }} --production-branch=main
+        continue-on-error: true
 
       - name: Deploy to Cloudflare Pages
-        if: github.event_name != 'pull_request'
         uses: cloudflare/pages-action@v1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: ${{ env.CLOUDFLARE_PROJECT_NAME }}
+          projectName: ${{ env.PROJECT_NAME }}
           directory: ./frontend/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
