@@ -284,6 +284,41 @@
       "timestamp": "2026-01-16T17:32:39.317738",
       "error": "LPR failed: lpr: Error - ~/.cups/lpoptions file names default destination that does not exist.\n",
       "username": "Operator-2"
+    },
+    {
+      "id": "8e4b1b29-2686-4f58-8c23-4288a9509917",
+      "file_id": "qr-template",
+      "doc_name": "STL",
+      "page_num": 1,
+      "printer": "Preview (macOS)",
+      "status": "success",
+      "timestamp": "2026-04-23T13:11:53.852635",
+      "error": null,
+      "username": "template-user",
+      "barcode": "FOB1NA2R411105MA$2534007223",
+      "template_type": "template_1",
+      "message": "Preview generated"
+    },
+    {
+      "id": "1f16add0-fe6c-49f7-9472-c7e6dd3bca89",
+      "file_id": "qr-template",
+      "doc_name": "STL",
+      "page_num": 1,
+      "printer": "Preview (macOS)",
+      "status": "success",
+      "timestamp": "2026-04-23T13:13:28.483117",
+      "error": null,
+      "username": "template-user",
+      "barcode": "FOB1NA2R411105MA$2534007223",
+      "template_type": "template_1",
+      "message": "Preview generated"
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "password": "admin",
+      "role": "admin"
     }
   ]
 }

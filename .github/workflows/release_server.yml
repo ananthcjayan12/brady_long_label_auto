@@ -36,6 +36,17 @@ jobs:
           # Verify
           pdftoppm -v
 
+      - name: Validate Required Media Assets
+        shell: pwsh
+        run: |
+          if (!(Test-Path ".\media")) {
+            throw "Missing required folder: media"
+          }
+          if (!(Test-Path ".\media\logo.jpeg")) {
+            throw "Missing required logo: media\logo.jpeg"
+          }
+          Write-Host "Media assets detected."
+
       - name: Build EXE (Folder Mode)
         working-directory: ./print-server
         env:
@@ -44,6 +55,7 @@ jobs:
           # --onedir: Create a folder (less likely to trigger antivirus)
           pyinstaller --onedir --name QRLabelPrintBridge `
             --add-binary "C:\poppler\poppler-24.02.0\Library\bin\*;poppler" `
+            --add-data "..\media;media" `
             app.py
 
       - name: Create Zip Bundle

@@ -1,57 +1,81 @@
-import { useEffect, useMemo, useState } from 'react';
-import QRCode from 'qrcode';
+import { useMemo, useState } from 'react';
 import { Printer, RefreshCw, Server } from 'lucide-react';
 import { api } from '../api';
+import { buildLabelSettingsPayload, loadLayoutProfiles } from '../qrLayoutSettings';
 
 const DEFAULT_SERVER = 'http://localhost:5001';
 
-function QRTemplatePage() {
+function normalizeScanData(value) {
+    return (value || '').replace(/\r/g, '').replace(/\n/g, '').trim();
+}
+
+function parseScanPayload(value) {
+    const payload = normalizeScanData(value);
+    if (!payload) {
+        return { payload: '', line1: '', line2: '', error: '' };
+    }
+
+    const parts = payload.split('$');
+    if (parts.length !== 2) {
+        return { payload, line1: '', line2: '', error: 'Invalid scan format. Use: <line1>$<line2>' };
+    }
+
+    const line1 = parts[0].trim().toUpperCase();
+    const line2 = parts[1].trim();
+
+    if (!line1 || !line2) {
+        return { payload, line1, line2, error: 'Both line 1 and line 2 are required.' };
+    }
+
+    if (![15, 16].includes(line1.length)) {
+        return { payload, line1, line2, error: 'Line 1 must be 15 or 16 characters.' };
+    }
+
+    if (!/^\d{10}$/.test(line2)) {
+        return { payload, line1, line2, error: 'Line 2 must be exactly 10 digits.' };
+    }
+
+    return { payload, line1, line2, error: '' };
+}
+
+function QRTemplatePage({ layoutProfiles, onOpenSettings }) {
     const [serverUrl, setServerUrl] = useState(localStorage.getItem('api_url') || DEFAULT_SERVER);
     const [status, setStatus] = useState({ type: 'idle', message: '' });
-    const [qrData, setQrData] = useState('https://example.com/item/ABC-123');
-    const [label, setLabel] = useState('Sample QR Label');
+    const [qrData, setQrData] = useState('FOB1NA2R411105MA$2534007223');
+    const [templateType, setTemplateType] = useState(localStorage.getItem('template_type') || 'template_1');
     const [printers, setPrinters] = useState([]);
     const [selectedPrinter, setSelectedPrinter] = useState(localStorage.getItem('selected_printer') || '');
     const [loadingPrinters, setLoadingPrinters] = useState(false);
     const [printing, setPrinting] = useState(false);
-    const [previewSrc, setPreviewSrc] = useState('');
 
-    const [labelSettings, setLabelSettings] = useState(() => {
-        const stored = localStorage.getItem('label_settings');
-        if (!stored) {
-            return { width: 3.94, height: 2.0 };
-        }
-        try {
-            const parsed = JSON.parse(stored);
-            return {
-                width: Number(parsed.width) || 3.94,
-                height: Number(parsed.height) || 2.0
-            };
-        } catch {
-            return { width: 3.94, height: 2.0 };
-        }
-    });
-
-    useEffect(() => {
-        regeneratePreview();
-    }, [qrData]);
+    const parsedPayload = useMemo(() => parseScanPayload(qrData), [qrData]);
+    const activeLayoutProfiles = useMemo(
+        () => layoutProfiles || loadLayoutProfiles(),
+        [layoutProfiles]
+    );
+    const labelSettingsPayload = useMemo(
+        () => buildLabelSettingsPayload(activeLayoutProfiles, templateType),
+        [activeLayoutProfiles, templateType]
+    );
 
     const previewUrl = useMemo(() => {
+        if (!parsedPayload.payload || parsedPayload.error) {
+            return '';
+        }
         const base = serverUrl.replace(/\/$/, '');
         const params = new URLSearchParams({
-            data: qrData,
-            label,
-            width: String(labelSettings.width),
-            height: String(labelSettings.height)
+            data: parsedPayload.payload,
+            template_type: templateType,
+            layout: JSON.stringify(labelSettingsPayload)
         });
         return `${base}/api/qr/preview?${params.toString()}`;
-    }, [serverUrl, qrData, label, labelSettings]);
+    }, [serverUrl, parsedPayload.payload, parsedPayload.error, templateType, labelSettingsPayload]);
 
     const saveSettings = () => {
         const normalizedUrl = serverUrl.replace(/\/$/, '');
         localStorage.setItem('api_url', normalizedUrl);
         localStorage.setItem('selected_printer', selectedPrinter);
-        localStorage.setItem('label_settings', JSON.stringify(labelSettings));
+        localStorage.setItem('template_type', templateType);
         setStatus({ type: 'success', message: 'Template settings saved.' });
     };
 
@@ -93,26 +117,14 @@ function QRTemplatePage() {
         }
     };
 
-    const regeneratePreview = async () => {
-        if (!qrData.trim()) {
-            setPreviewSrc('');
+    const onPrint = async () => {
+        if (!parsedPayload.payload) {
+            setStatus({ type: 'error', message: 'Scan QR data before printing.' });
             return;
         }
-        try {
-            const dataUrl = await QRCode.toDataURL(qrData, {
-                margin: 1,
-                width: 280,
-                errorCorrectionLevel: 'M'
-            });
-            setPreviewSrc(dataUrl);
-        } catch {
-            setPreviewSrc('');
-        }
-    };
 
-    const onPrint = async () => {
-        if (!qrData.trim()) {
-            setStatus({ type: 'error', message: 'Enter QR data before printing.' });
+        if (parsedPayload.error) {
+            setStatus({ type: 'error', message: parsedPayload.error });
             return;
         }
 
@@ -121,14 +133,17 @@ function QRTemplatePage() {
 
         try {
             const response = await api.printQrLabel({
-                data: qrData,
-                label,
+                data: parsedPayload.payload,
+                label: '',
+                templateType,
                 printerName: selectedPrinter || null,
-                labelSettings
+                labelSettings: labelSettingsPayload
             });
 
             if (response?.mode === 'preview') {
-                window.open(previewUrl, '_blank');
+                const normalizedServer = serverUrl.replace(/\/$/, '');
+                const previewLink = response.preview_url ? `${normalizedServer}${response.preview_url}` : previewUrl;
+                window.open(previewLink, '_blank');
             }
 
             if (response.success) {
@@ -155,7 +170,7 @@ function QRTemplatePage() {
                 <div className="card">
                     <div className="flex items-center" style={{ marginBottom: '12px' }}>
                         <Server size={18} color="var(--primary)" />
-                        <h3>Server & Printer</h3>
+                        <h3>Server, Printer & Template</h3>
                     </div>
 
                     <label style={{ fontSize: '13px', fontWeight: 500 }}>Server URL</label>
@@ -191,31 +206,27 @@ function QRTemplatePage() {
                         ))}
                     </select>
 
-                    <label style={{ fontSize: '13px', fontWeight: 500 }}>Label Width (inches)</label>
-                    <input
+                    <label style={{ fontSize: '13px', fontWeight: 500 }}>Template Option</label>
+                    <select
                         className="input"
-                        type="number"
-                        min="1"
-                        max="8.5"
-                        step="0.1"
-                        value={labelSettings.width}
-                        onChange={(e) => setLabelSettings((prev) => ({ ...prev, width: Number(e.target.value) || 3.94 }))}
                         style={{ marginTop: '6px', marginBottom: '10px' }}
-                    />
+                        value={templateType}
+                        onChange={(e) => setTemplateType(e.target.value)}
+                    >
+                        <option value="template_1">Template 1 (First Cell Type)</option>
+                        <option value="template_2">Template 2 (Second Cell Type)</option>
+                    </select>
 
-                    <label style={{ fontSize: '13px', fontWeight: 500 }}>Label Height (inches)</label>
-                    <input
-                        className="input"
-                        type="number"
-                        min="1"
-                        max="11"
-                        step="0.1"
-                        value={labelSettings.height}
-                        onChange={(e) => setLabelSettings((prev) => ({ ...prev, height: Number(e.target.value) || 2.0 }))}
-                        style={{ marginTop: '6px', marginBottom: '16px' }}
-                    />
+                    <label style={{ fontSize: '13px', fontWeight: 500 }}>Active Label Measurement</label>
+                    <p style={{ marginTop: '6px', marginBottom: '16px', fontSize: '13px' }}>
+                        Width: {labelSettingsPayload.width_in} in, Total Height: {labelSettingsPayload.total_height_in} in,
+                        Top Printable: {labelSettingsPayload.top_printable_height_in} in.
+                    </p>
 
-                    <button className="btn btn-primary" onClick={saveSettings}>Save Template Settings</button>
+                    <div className="flex" style={{ flexWrap: 'wrap' }}>
+                        <button className="btn btn-primary" onClick={saveSettings}>Save Template Settings</button>
+                        <button className="btn btn-secondary" onClick={onOpenSettings}>Open Layout Settings</button>
+                    </div>
                 </div>
 
                 <div className="card">
@@ -230,17 +241,21 @@ function QRTemplatePage() {
                         rows={4}
                         value={qrData}
                         onChange={(e) => setQrData(e.target.value)}
-                        placeholder="Text or URL to encode"
+                        placeholder="Scan value format: LINE1$LINE2"
                         style={{ marginTop: '6px', marginBottom: '10px', resize: 'vertical' }}
                     />
 
-                    <label style={{ fontSize: '13px', fontWeight: 500 }}>Label Text (optional)</label>
-                    <input
-                        className="input"
-                        value={label}
-                        onChange={(e) => setLabel(e.target.value)}
-                        style={{ marginTop: '6px', marginBottom: '16px' }}
-                    />
+                    <label style={{ fontSize: '13px', fontWeight: 500 }}>Line 1</label>
+                    <input className="input" value={parsedPayload.line1} readOnly style={{ marginTop: '6px', marginBottom: '10px' }} />
+
+                    <label style={{ fontSize: '13px', fontWeight: 500 }}>Line 2</label>
+                    <input className="input" value={parsedPayload.line2} readOnly style={{ marginTop: '6px', marginBottom: '10px' }} />
+
+                    {parsedPayload.error && (
+                        <div className="status-badge status-error" style={{ marginBottom: '12px' }}>
+                            {parsedPayload.error}
+                        </div>
+                    )}
 
                     <button className="btn btn-primary" onClick={onPrint} disabled={printing}>
                         {printing ? 'Printing...' : 'Generate & Print QR'}
@@ -250,13 +265,16 @@ function QRTemplatePage() {
 
             <div className="card" style={{ marginTop: '16px' }}>
                 <h3 style={{ marginBottom: '8px' }}>Preview</h3>
-                {previewSrc ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                        <img src={previewSrc} alt="QR Preview" style={{ width: 220, height: 220, border: '1px solid var(--border)', borderRadius: '8px' }} />
-                        <p style={{ fontSize: '13px' }}>PDF preview endpoint: {previewUrl}</p>
+                {previewUrl ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <iframe
+                            title="Label Preview"
+                            src={`${previewUrl}#toolbar=0&zoom=page-width`}
+                            style={{ width: '100%', height: '360px', border: '1px solid var(--border)', borderRadius: '8px' }}
+                        />
                     </div>
                 ) : (
-                    <p>Enter QR data to generate preview.</p>
+                    <p>Enter valid QR data in `LINE1$LINE2` format to generate preview.</p>
                 )}
             </div>
 

@@ -16,10 +16,18 @@ export const api = {
         return res.data;
     },
 
-    printQrLabel: async ({ data, label, printerName = null, labelSettings = {}, username = 'template-user' }) => {
+    printQrLabel: async ({
+        data,
+        label = '',
+        templateType = 'template_1',
+        printerName = null,
+        labelSettings = {},
+        username = 'template-user'
+    }) => {
         const res = await axios.post(`${getBaseUrl()}/api/qr/print`, {
             data,
             label,
+            template_type: templateType,
             printer_name: printerName,
             label_settings: labelSettings,
             username
@@ -27,4 +35,3 @@ export const api = {
         return res.data;
     }
 };
-

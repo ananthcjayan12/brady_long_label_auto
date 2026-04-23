@@ -4,15 +4,18 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import logging
 import io
+import json
 import platform
 import datetime
 import uuid
 import subprocess
+import sys
+from urllib.parse import urlencode
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
-from reportlab.graphics.barcode import qr as qrbarcode
-from reportlab.graphics.shapes import Drawing
-from reportlab.graphics import renderPDF
+from reportlab.graphics.barcode import code128
+from reportlab.lib import colors
+from reportlab.lib.utils import ImageReader
 
 # Import services (we'll create this next)
 from services import PDFProcessingService, PrintService
@@ -35,52 +38,308 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB limit
 pdf_service = PDFProcessingService(upload_folder=UPLOAD_FOLDER)
 print_service = PrintService(pdf_service)
 
+DEFAULT_GLOBAL_LAYOUT = {
+    'width_in': 1.0,
+    'total_height_in': 1.5,
+    'top_printable_height_in': 0.5
+}
+
+DEFAULT_TEMPLATE_LAYOUTS = {
+    'template_1': {
+        'logo_x_in': 0.30,
+        'logo_top_in': 0.01,
+        'logo_width_in': 0.40,
+        'logo_height_in': 0.0,
+        'line1_font_name': 'Helvetica-Bold',
+        'line1_font_size': 6.7,
+        'line1_y_in': 0.235,
+        'line2_font_name': 'Helvetica-Bold',
+        'line2_font_size': 8.5,
+        'line2_y_in': 0.145,
+        'text_max_width_in': 0.92,
+        'barcode_y_in': 0.02,
+        'barcode_height_in': 0.08,
+        'barcode_bar_width_in': 0.009
+    },
+    'template_2': {
+        'logo_x_in': 0.05,
+        'logo_top_in': 0.01,
+        'logo_width_in': 0.32,
+        'logo_height_in': 0.0,
+        'line1_font_name': 'Helvetica-Bold',
+        'line1_font_size': 6.5,
+        'line1_y_in': 0.225,
+        'line2_font_name': 'Helvetica-Bold',
+        'line2_font_size': 8.3,
+        'line2_y_in': 0.125,
+        'text_max_width_in': 0.92,
+        'barcode_y_in': 0.02,
+        'barcode_height_in': 0.075,
+        'barcode_bar_width_in': 0.008
+    }
+}
+
+ALLOWED_FONT_NAMES = {
+    'Helvetica',
+    'Helvetica-Bold',
+    'Times-Roman',
+    'Times-Bold',
+    'Courier',
+    'Courier-Bold'
+}
+
+LOGO_PATH = os.path.join(os.path.dirname(__file__), '..', 'media', 'logo.jpeg')
+
+
+def _candidate_logo_paths():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        LOGO_PATH,
+        os.path.join(base_dir, 'media', 'logo.jpeg'),
+        os.path.join(os.getcwd(), 'media', 'logo.jpeg')
+    ]
+
+    if getattr(sys, 'frozen', False):
+        exe_dir = os.path.dirname(sys.executable)
+        candidates.append(os.path.join(exe_dir, 'media', 'logo.jpeg'))
+
+    meipass = getattr(sys, '_MEIPASS', None)
+    if meipass:
+        candidates.append(os.path.join(meipass, 'media', 'logo.jpeg'))
+
+    seen = set()
+    ordered = []
+    for path in candidates:
+        normalized = os.path.normpath(path)
+        if normalized not in seen:
+            ordered.append(normalized)
+            seen.add(normalized)
+    return ordered
+
+
+def _resolve_logo_path():
+    for candidate in _candidate_logo_paths():
+        if os.path.exists(candidate):
+            return candidate
+    return None
+
 
 def _clamp(value, minimum, maximum):
     return max(minimum, min(maximum, value))
 
 
-def generate_qr_label_pdf(data, label, label_settings=None):
+def _normalize_template_type(value):
+    candidate = str(value or '').strip().lower()
+    if candidate in ('template_2', '2', 'template2'):
+        return 'template_2'
+    return 'template_1'
+
+
+def _parse_scan_payload(raw_data):
+    payload = (raw_data or '').replace('\n', '').replace('\r', '').strip()
+    if not payload:
+        raise ValueError('QR data is required')
+
+    parts = payload.split('$')
+    if len(parts) != 2:
+        raise ValueError('Invalid scan format. Expected <line1>$<line2>.')
+
+    line1 = parts[0].strip().upper()
+    line2 = parts[1].strip()
+
+    if not line1 or not line2:
+        raise ValueError('Both line 1 and line 2 are required in QR data.')
+    if len(line1) not in (15, 16):
+        raise ValueError('Line 1 must be 15 or 16 characters.')
+    if (not line2.isdigit()) or len(line2) != 10:
+        raise ValueError('Line 2 must be exactly 10 digits.')
+
+    return payload, line1, line2
+
+
+def _to_float(raw, key, default, minimum, maximum):
+    try:
+        value = float(raw.get(key, default))
+    except (TypeError, ValueError, AttributeError):
+        value = float(default)
+    return _clamp(value, minimum, maximum)
+
+
+def _sanitize_font_name(value, default):
+    candidate = str(value or '').strip()
+    return candidate if candidate in ALLOWED_FONT_NAMES else default
+
+
+def _sanitize_template_layout(template_type, raw_layout):
+    defaults = DEFAULT_TEMPLATE_LAYOUTS[template_type]
+    raw = raw_layout if isinstance(raw_layout, dict) else {}
+
+    return {
+        'logo_x_in': _to_float(raw, 'logo_x_in', defaults['logo_x_in'], 0.0, 0.95),
+        'logo_top_in': _to_float(raw, 'logo_top_in', defaults['logo_top_in'], 0.0, 0.49),
+        'logo_width_in': _to_float(raw, 'logo_width_in', defaults['logo_width_in'], 0.05, 1.0),
+        'logo_height_in': _to_float(raw, 'logo_height_in', defaults['logo_height_in'], 0.0, 0.49),
+        'line1_font_name': _sanitize_font_name(raw.get('line1_font_name'), defaults['line1_font_name']),
+        'line1_font_size': _to_float(raw, 'line1_font_size', defaults['line1_font_size'], 4.0, 24.0),
+        'line1_y_in': _to_float(raw, 'line1_y_in', defaults['line1_y_in'], 0.01, 0.49),
+        'line2_font_name': _sanitize_font_name(raw.get('line2_font_name'), defaults['line2_font_name']),
+        'line2_font_size': _to_float(raw, 'line2_font_size', defaults['line2_font_size'], 4.0, 24.0),
+        'line2_y_in': _to_float(raw, 'line2_y_in', defaults['line2_y_in'], 0.01, 0.49),
+        'text_max_width_in': _to_float(raw, 'text_max_width_in', defaults['text_max_width_in'], 0.20, 1.0),
+        'barcode_y_in': _to_float(raw, 'barcode_y_in', defaults['barcode_y_in'], 0.0, 0.49),
+        'barcode_height_in': _to_float(raw, 'barcode_height_in', defaults['barcode_height_in'], 0.01, 0.30),
+        'barcode_bar_width_in': _to_float(raw, 'barcode_bar_width_in', defaults['barcode_bar_width_in'], 0.001, 0.03)
+    }
+
+
+def _sanitize_global_layout(raw_layout):
+    raw = raw_layout if isinstance(raw_layout, dict) else {}
+    fallback_width = raw.get('width', DEFAULT_GLOBAL_LAYOUT['width_in'])
+    fallback_height = raw.get('height', DEFAULT_GLOBAL_LAYOUT['total_height_in'])
+    return {
+        'width_in': _to_float(raw, 'width_in', fallback_width, 0.5, 8.5),
+        'total_height_in': _to_float(raw, 'total_height_in', fallback_height, 0.5, 11.0),
+        'top_printable_height_in': _to_float(raw, 'top_printable_height_in', DEFAULT_GLOBAL_LAYOUT['top_printable_height_in'], 0.1, 2.0)
+    }
+
+
+def _build_layout_settings(template_type, label_settings):
+    base = label_settings if isinstance(label_settings, dict) else {}
+    template_specific = base.get(template_type)
+    if isinstance(template_specific, dict):
+        merged_raw = {**base, **template_specific}
+    else:
+        merged_raw = dict(base)
+
+    global_layout = _sanitize_global_layout(merged_raw)
+    template_layout = _sanitize_template_layout(template_type, merged_raw)
+    return global_layout, template_layout
+
+
+def _draw_logo(c, template_layout, page_width, top_area_y, top_area_height):
+    logo_path = _resolve_logo_path()
+    if not logo_path:
+        logger.warning("Logo file not found in expected paths: %s", ', '.join(_candidate_logo_paths()))
+        return
+
+    try:
+        logo = ImageReader(logo_path)
+        source_w, source_h = logo.getSize()
+        source_ratio = source_h / source_w if source_w else 1.0
+
+        target_w = min(template_layout['logo_width_in'] * inch, page_width)
+        configured_h = template_layout['logo_height_in'] * inch
+        target_h = configured_h if configured_h > 0 else (target_w * source_ratio)
+        target_h = min(target_h, top_area_height)
+        if target_w <= 0 or target_h <= 0:
+            return
+        x = template_layout['logo_x_in'] * inch
+        y = top_area_y + top_area_height - (template_layout['logo_top_in'] * inch) - target_h
+        x = _clamp(x, 0.0, max(0.0, page_width - target_w))
+        y = _clamp(y, top_area_y, top_area_y + top_area_height - target_h)
+
+        c.drawImage(
+            logo,
+            x,
+            y,
+            width=target_w,
+            height=target_h,
+            mask='auto',
+            preserveAspectRatio=True
+        )
+    except Exception as exc:
+        logger.warning(f"Failed to draw logo: {exc}")
+
+
+def _draw_centered_fit_text(c, text, y, page_width, max_width, font_name='Helvetica-Bold', font_size=8.0, min_size=4.0):
+    clipped = (text or '')[:40]
+    if not clipped:
+        return
+
+    current_size = float(font_size)
+    while current_size > min_size and c.stringWidth(clipped, font_name, current_size) > max_width:
+        current_size -= 0.2
+
+    c.setFillColor(colors.black)
+    c.setFont(font_name, current_size)
+    c.drawCentredString(page_width / 2, y, clipped)
+
+
+def generate_qr_label_pdf(data, _label='', label_settings=None, template_type='template_1'):
     if label_settings is None:
         label_settings = {}
 
-    width = _clamp(float(label_settings.get('width', 3.94)), 1.0, 8.5)
-    height = _clamp(float(label_settings.get('height', 2.0)), 1.0, 11.0)
+    payload, line1, line2 = _parse_scan_payload(data)
+    template = _normalize_template_type(template_type)
+    global_layout, template_layout = _build_layout_settings(template, label_settings)
 
-    data = (data or '').strip()
-    label = (label or '').strip()
-    if not data:
-        raise ValueError('QR data is required')
+    page_width = global_layout['width_in'] * inch
+    page_height = global_layout['total_height_in'] * inch
+    top_printable_height = min(global_layout['top_printable_height_in'] * inch, page_height)
+    top_area_y = page_height - top_printable_height
 
     packet = io.BytesIO()
-    c = canvas.Canvas(packet, pagesize=(width * inch, height * inch))
+    c = canvas.Canvas(packet, pagesize=(page_width, page_height))
 
-    margin = 0.12 * inch
-    label_height = 0.26 * inch if label else 0
-    available_width = (width * inch) - (2 * margin)
-    available_height = (height * inch) - (2 * margin) - label_height
+    # Full white background ensures transparent-sticker reserved section gets no print content.
+    c.setFillColor(colors.white)
+    c.rect(0, 0, page_width, page_height, stroke=0, fill=1)
 
-    qr_size = min(available_width, available_height)
-    qr_x = ((width * inch) - qr_size) / 2
-    qr_y = margin + (available_height - qr_size) / 2
+    # Explicitly preserve lower section as blank white (no content area).
+    c.setFillColor(colors.white)
+    c.rect(0, 0, page_width, top_area_y, stroke=0, fill=1)
 
-    qr_widget = qrbarcode.QrCodeWidget(data)
-    bounds = qr_widget.getBounds()
-    qr_drawing = Drawing(qr_size, qr_size, transform=[
-        qr_size / (bounds[2] - bounds[0]),
-        0,
-        0,
-        qr_size / (bounds[3] - bounds[1]),
-        -bounds[0] * qr_size / (bounds[2] - bounds[0]),
-        -bounds[1] * qr_size / (bounds[3] - bounds[1])
-    ])
-    qr_drawing.add(qr_widget)
-    renderPDF.draw(qr_drawing, c, qr_x, qr_y)
+    _draw_logo(c, template_layout, page_width, top_area_y, top_printable_height)
 
-    if label:
-        c.setFont('Helvetica', 9)
-        c.drawCentredString((width * inch) / 2, margin * 0.6, label[:80])
+    text_max_width = min(template_layout['text_max_width_in'] * inch, max(0.1 * inch, page_width - (0.04 * inch)))
+    max_text_y = top_area_y + max(2.0, top_printable_height - 2.0)
+    min_text_y = top_area_y + 2.0
 
+    line1_y = _clamp(top_area_y + (template_layout['line1_y_in'] * inch), min_text_y, max_text_y)
+    line2_y = _clamp(top_area_y + (template_layout['line2_y_in'] * inch), min_text_y, max_text_y)
+    _draw_centered_fit_text(
+        c,
+        line1,
+        line1_y,
+        page_width,
+        text_max_width,
+        font_name=template_layout['line1_font_name'],
+        font_size=template_layout['line1_font_size']
+    )
+    _draw_centered_fit_text(
+        c,
+        line2,
+        line2_y,
+        page_width,
+        text_max_width,
+        font_name=template_layout['line2_font_name'],
+        font_size=template_layout['line2_font_size']
+    )
+
+    barcode_height = template_layout['barcode_height_in'] * inch
+    barcode_base_width = template_layout['barcode_bar_width_in']
+
+    barcode = code128.Code128(line2, barHeight=barcode_height, barWidth=barcode_base_width, humanReadable=False)
+    max_barcode_width = max(0.1 * inch, text_max_width)
+    if barcode.width > max_barcode_width:
+        ratio = max_barcode_width / barcode.width
+        barcode = code128.Code128(
+            line2,
+            barHeight=barcode_height,
+            barWidth=max(0.004, barcode_base_width * ratio),
+            humanReadable=False
+        )
+
+    barcode_x = (page_width - barcode.width) / 2
+    barcode_y = _clamp(
+        top_area_y + (template_layout['barcode_y_in'] * inch),
+        top_area_y,
+        top_area_y + max(0.0, top_printable_height - barcode_height)
+    )
+    barcode.drawOn(c, barcode_x, barcode_y)
+
+    c.setAuthor('QR Label Print Template')
+    c.setTitle(f'{template}:{payload}')
     c.showPage()
     c.save()
     packet.seek(0)
@@ -454,12 +713,23 @@ def download_report():
 def qr_preview():
     try:
         data = request.args.get('data', '')
-        label = request.args.get('label', '')
-        label_settings = {
-            'width': request.args.get('width', 3.94),
-            'height': request.args.get('height', 2.0)
-        }
-        pdf_bytes = generate_qr_label_pdf(data, label, label_settings)
+        template_type = _normalize_template_type(request.args.get('template_type'))
+        raw_layout = request.args.get('layout', '')
+        label_settings = {}
+        if raw_layout:
+            try:
+                decoded_layout = json.loads(raw_layout)
+                if isinstance(decoded_layout, dict):
+                    label_settings = decoded_layout
+            except Exception:
+                label_settings = {}
+        else:
+            label_settings = {
+                'width_in': request.args.get('width', DEFAULT_GLOBAL_LAYOUT['width_in']),
+                'total_height_in': request.args.get('height', DEFAULT_GLOBAL_LAYOUT['total_height_in']),
+                'top_printable_height_in': request.args.get('top_printable_height', DEFAULT_GLOBAL_LAYOUT['top_printable_height_in'])
+            }
+        pdf_bytes = generate_qr_label_pdf(data, label_settings=label_settings, template_type=template_type)
         return send_file(
             io.BytesIO(pdf_bytes),
             mimetype='application/pdf',
@@ -475,6 +745,7 @@ def print_qr_label():
     data = request.json or {}
     qr_data = (data.get('data') or '').strip()
     label = (data.get('label') or '').strip()
+    template_type = _normalize_template_type(data.get('template_type'))
     printer_name = data.get('printer_name')
     label_settings = data.get('label_settings') or {}
     username = data.get('username', 'Unknown')
@@ -482,12 +753,24 @@ def print_qr_label():
     if not qr_data:
         return jsonify({'success': False, 'error': 'QR data is required'}), 400
 
+    try:
+        _parse_scan_payload(qr_data)
+    except ValueError as validation_error:
+        return jsonify({'success': False, 'error': str(validation_error)}), 400
+
     job_id = str(uuid.uuid4())
     temp_filename = f"qr_print_{job_id}.pdf"
     timestamp = datetime.datetime.now().isoformat()
 
+    preview_params = urlencode({
+        'data': qr_data,
+        'template_type': template_type,
+        'layout': json.dumps(label_settings)
+    })
+    preview_url = f"/api/qr/preview?{preview_params}"
+
     try:
-        pdf_bytes = generate_qr_label_pdf(qr_data, label, label_settings)
+        pdf_bytes = generate_qr_label_pdf(qr_data, label_settings=label_settings, template_type=template_type)
 
         if platform.system() == 'Darwin':
             pdf_service.log_print_job({
@@ -501,13 +784,14 @@ def print_qr_label():
                 'error': None,
                 'username': username,
                 'barcode': qr_data,
+                'template_type': template_type,
                 'message': 'Preview generated'
             })
             return jsonify({
                 'success': True,
                 'mode': 'preview',
                 'message': 'macOS dev mode: preview generated (no physical print).',
-                'preview_url': '/api/qr/preview'
+                'preview_url': preview_url
             })
 
         with open(temp_filename, 'wb') as temp_file:
@@ -548,6 +832,7 @@ def print_qr_label():
             'error': None if success else message,
             'username': username,
             'barcode': qr_data,
+            'template_type': template_type,
             'message': message
         })
 
