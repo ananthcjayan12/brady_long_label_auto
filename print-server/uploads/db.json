@@ -1,0 +1,289 @@
+{
+  "documents": {
+    "cfec89a8-8f80-4f3d-b1c4-78852fe3f925": {
+      "id": "cfec89a8-8f80-4f3d-b1c4-78852fe3f925",
+      "name": "0032600624_05_Dec_25_1.pdf",
+      "path": "/Users/ananthu/Desktop/new_repos/pdf_print_brady/print-server/uploads/0032600624_05_Dec_25_1.pdf",
+      "uploaded_at": "2025-12-17T16:02:30.954016",
+      "pages": 10,
+      "barcodes_found": 38,
+      "hash": "4c529eeffd951b785ab1d10d6bbc2b6d43d5173d1a90f171bf6f65ea151f8404"
+    },
+    "c58222be-2d36-462a-bb93-9b2799780534": {
+      "id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "name": "0032600626_05_Dec_25_1.pdf",
+      "path": "/Users/ananthu/Desktop/new_repos/pdf_print_brady/print-server/uploads/0032600626_05_Dec_25_1.pdf",
+      "uploaded_at": "2025-12-17T16:02:44.793816",
+      "pages": 14,
+      "barcodes_found": 56,
+      "hash": "ed240f2e3cc1c1d158eaad3ea11648dc90389d756e3116e6f4d17faebb8ad5d3"
+    }
+  },
+  "mappings": {
+    "K9164305369": {
+      "file_id": "cfec89a8-8f80-4f3d-b1c4-78852fe3f925",
+      "page_num": 1,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600624_05_Dec_25_1.pdf"
+    },
+    "K9170150205": {
+      "file_id": "cfec89a8-8f80-4f3d-b1c4-78852fe3f925",
+      "page_num": 2,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600624_05_Dec_25_1.pdf"
+    },
+    "K9162208202": {
+      "file_id": "cfec89a8-8f80-4f3d-b1c4-78852fe3f925",
+      "page_num": 3,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600624_05_Dec_25_1.pdf"
+    },
+    "1M164841169": {
+      "file_id": "cfec89a8-8f80-4f3d-b1c4-78852fe3f925",
+      "page_num": 4,
+      "type": "GENERIC_SN",
+      "confidence": 1.0,
+      "doc_name": "0032600624_05_Dec_25_1.pdf"
+    },
+    "K9160600172": {
+      "file_id": "cfec89a8-8f80-4f3d-b1c4-78852fe3f925",
+      "page_num": 5,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600624_05_Dec_25_1.pdf"
+    },
+    "K9161700418": {
+      "file_id": "cfec89a8-8f80-4f3d-b1c4-78852fe3f925",
+      "page_num": 6,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600624_05_Dec_25_1.pdf"
+    },
+    "K9152908392": {
+      "file_id": "cfec89a8-8f80-4f3d-b1c4-78852fe3f925",
+      "page_num": 7,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600624_05_Dec_25_1.pdf"
+    },
+    "K9150551484": {
+      "file_id": "cfec89a8-8f80-4f3d-b1c4-78852fe3f925",
+      "page_num": 8,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600624_05_Dec_25_1.pdf"
+    },
+    "K9154258872": {
+      "file_id": "cfec89a8-8f80-4f3d-b1c4-78852fe3f925",
+      "page_num": 9,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600624_05_Dec_25_1.pdf"
+    },
+    "K9163317864": {
+      "file_id": "cfec89a8-8f80-4f3d-b1c4-78852fe3f925",
+      "page_num": 10,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600624_05_Dec_25_1.pdf"
+    },
+    "K9183644028": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 1,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    },
+    "K9183230221": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 2,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    },
+    "K9162947316": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 3,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    },
+    "K9172965395": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 4,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    },
+    "K9180130503": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 5,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    },
+    "K9180615587": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 6,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    },
+    "EA174360952": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 7,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    },
+    "EA182160561": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 8,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    },
+    "K9173555971": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 9,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    },
+    "EA175060269": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 10,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    },
+    "EA182762314": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 11,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    },
+    "EA182163113": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 12,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    },
+    "K9163661108": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 13,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    },
+    "EA171660360": {
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "page_num": 14,
+      "type": "ALPHANUMERIC_ID",
+      "confidence": 1.0,
+      "doc_name": "0032600626_05_Dec_25_1.pdf"
+    }
+  },
+  "print_jobs": [
+    {
+      "id": "c3165280-cb2d-463e-b305-ac3cc1bfb0d5",
+      "file_id": "033d9b0d-e4a2-48ac-bf68-702f8b8bb573",
+      "doc_name": "0032600624_05_Dec_25_1.pdf",
+      "page_num": 1,
+      "printer": "Default",
+      "status": "success",
+      "timestamp": "2025-12-17T15:26:51.510590",
+      "error": null
+    },
+    {
+      "id": "faa87c8a-91bd-4008-a81e-bd3476b4f340",
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "doc_name": "0032600626_05_Dec_25_1.pdf",
+      "page_num": 1,
+      "printer": "Default",
+      "status": "failed",
+      "timestamp": "2026-01-08T16:18:47.080195",
+      "error": "LPR failed: lpr: Error - No default destination.\n"
+    },
+    {
+      "id": "6c1655fc-eec1-44ed-bbf5-fc49e96e5156",
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "doc_name": "0032600626_05_Dec_25_1.pdf",
+      "page_num": 1,
+      "printer": "Default",
+      "status": "failed",
+      "timestamp": "2026-01-08T16:18:59.076917",
+      "error": "LPR failed: lpr: Error - No default destination.\n"
+    },
+    {
+      "id": "0e08ea74-3d98-4470-91a6-10f8c2707b0c",
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "doc_name": "0032600626_05_Dec_25_1.pdf",
+      "page_num": 1,
+      "printer": "Default",
+      "status": "failed",
+      "timestamp": "2026-01-08T16:19:57.929399",
+      "error": "LPR failed: lpr: Error - No default destination.\n"
+    },
+    {
+      "id": "c4f0a9f7-4832-4817-84ff-7e20636b681e",
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "doc_name": "0032600626_05_Dec_25_1.pdf",
+      "page_num": 1,
+      "printer": "Default",
+      "status": "failed",
+      "timestamp": "2026-01-16T17:21:25.710826",
+      "error": "LPR failed: lpr: Error - ~/.cups/lpoptions file names default destination that does not exist.\n",
+      "username": "admin"
+    },
+    {
+      "id": "a3dbda74-310b-4f11-bcc3-0b56cc4802dd",
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "doc_name": "0032600626_05_Dec_25_1.pdf",
+      "page_num": 1,
+      "printer": "Default",
+      "status": "failed",
+      "timestamp": "2026-01-16T17:28:16.000604",
+      "error": "LPR failed: lpr: Error - ~/.cups/lpoptions file names default destination that does not exist.\n",
+      "username": "admin"
+    },
+    {
+      "id": "f6f4627c-52d0-4b8b-9343-074d90c53a71",
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "doc_name": "0032600626_05_Dec_25_1.pdf",
+      "page_num": 1,
+      "printer": "Default",
+      "status": "failed",
+      "timestamp": "2026-01-16T17:28:56.829344",
+      "error": "LPR failed: lpr: Error - ~/.cups/lpoptions file names default destination that does not exist.\n",
+      "username": "admin"
+    },
+    {
+      "id": "1ac6097c-2ca3-4cf2-982d-a551f66510b7",
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "doc_name": "0032600626_05_Dec_25_1.pdf",
+      "page_num": 1,
+      "printer": "Default",
+      "status": "failed",
+      "timestamp": "2026-01-16T17:32:18.108903",
+      "error": "LPR failed: lpr: Error - ~/.cups/lpoptions file names default destination that does not exist.\n",
+      "username": "Operator-2"
+    },
+    {
+      "id": "6f621ec3-b1ad-43b2-9bd4-abf216a27334",
+      "file_id": "c58222be-2d36-462a-bb93-9b2799780534",
+      "doc_name": "0032600626_05_Dec_25_1.pdf",
+      "page_num": 1,
+      "printer": "Default",
+      "status": "failed",
+      "timestamp": "2026-01-16T17:32:39.317738",
+      "error": "LPR failed: lpr: Error - ~/.cups/lpoptions file names default destination that does not exist.\n",
+      "username": "Operator-2"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+name: Feature Request
+description: Request a scoped feature for this template
+labels: [feature]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: One sentence desired user outcome
+      placeholder: "Users can bulk-print QR labels from CSV input"
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why now
+      description: Business or operational reason
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Which folders/files are allowed to change
+      placeholder: "frontend/src/pages/QRTemplatePage.jsx, frontend/src/api.js, print-server/app.py"
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: UX, security, performance, compatibility constraints
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: Numbered, testable criteria
+      placeholder: |
+        1. Upload CSV with 100 rows succeeds.
+        2. 100 QR jobs are queued/printed.
+        3. Failed rows are reported with reason.
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of Scope
+      description: Explicitly list what must not change
+    validations:
+      required: true
