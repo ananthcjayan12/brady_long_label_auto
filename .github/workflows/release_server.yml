@@ -6,6 +6,10 @@ on:
 permissions:
   contents: write
 
+env:
+  APP_NAME: BradyTextAutoLabelBridge
+  ARTIFACT_NAME: BradyTextAutoLabelBridge-Windows
+
 jobs:
   build-windows:
     name: Build Windows EXE
@@ -53,21 +57,25 @@ jobs:
           PATH: C:\poppler\poppler-24.02.0\Library\bin;${{ env.PATH }}
         run: |
           # --onedir: Create a folder (less likely to trigger antivirus)
-          pyinstaller --onedir --name QRLabelPrintBridge `
+          pyinstaller --onedir --name ${{ env.APP_NAME }} `
             --add-binary "C:\poppler\poppler-24.02.0\Library\bin\*;poppler" `
             --add-data "..\media;media" `
+            --collect-submodules reportlab.graphics.barcode `
+            --hidden-import reportlab.graphics.barcode.code93 `
+            --hidden-import reportlab.graphics.barcode.code128 `
+            --hidden-import reportlab.graphics.barcode.code39 `
             app.py
 
       - name: Create Zip Bundle
         working-directory: ./print-server/dist
         run: |
-          Compress-Archive -Path QRLabelPrintBridge -DestinationPath QRLabelPrintBridge-Windows.zip
+          Compress-Archive -Path ${{ env.APP_NAME }} -DestinationPath ${{ env.ARTIFACT_NAME }}.zip
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: QRLabelPrintBridge-Windows
-          path: ./print-server/dist/QRLabelPrintBridge-Windows.zip
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ./print-server/dist/${{ env.ARTIFACT_NAME }}.zip
 
   create-release:
     needs: [build-windows]
@@ -77,7 +85,7 @@ jobs:
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
         with:
-          name: QRLabelPrintBridge-Windows
+          name: ${{ env.ARTIFACT_NAME }}
           path: ./artifacts/
 
       - name: Create Release
@@ -92,12 +100,12 @@ jobs:
             
             | File | Description |
             |------|-------------|
-            | **QRLabelPrintBridge-Windows.zip** | 🪟 **Download This** - Extract and run `QRLabelPrintBridge.exe` inside. No Python required. |
+            | **${{ env.ARTIFACT_NAME }}.zip** | 🪟 **Download This** - Extract and run `${{ env.APP_NAME }}.exe` inside. No Python required. |
             
             ### How to run:
             1. Download and Extract the ZIP.
-            2. Open the folder `QRLabelPrintBridge`.
-            3. Double-click **`QRLabelPrintBridge.exe`**.
+            2. Open the folder `${{ env.APP_NAME }}`.
+            3. Double-click **`${{ env.APP_NAME }}.exe`**.
             4. Keep the window open.
           files: |
             ./artifacts/*.zip

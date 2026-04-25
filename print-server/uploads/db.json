@@ -312,6 +312,48 @@
       "barcode": "FOB1NA2R411105MA$2534007223",
       "template_type": "template_1",
       "message": "Preview generated"
+    },
+    {
+      "id": "435291eb-8a8e-4d74-a08d-7dc43e20045d",
+      "file_id": "qr-template",
+      "doc_name": "QR Label",
+      "page_num": 1,
+      "printer": "Preview (macOS)",
+      "status": "success",
+      "timestamp": "2026-04-23T17:54:38.627645",
+      "error": null,
+      "username": "template-user",
+      "barcode": "FOB1NA2R411105MA$2534007223",
+      "template_type": "template_1",
+      "message": "Preview generated"
+    },
+    {
+      "id": "4c7d0f05-6429-4139-9c15-530494def7bb",
+      "file_id": "qr-template",
+      "doc_name": "QR Label",
+      "page_num": 1,
+      "printer": "Preview (macOS)",
+      "status": "success",
+      "timestamp": "2026-04-23T17:56:46.817831",
+      "error": null,
+      "username": "template-user",
+      "barcode": "FOB1NA2R411105MA$2534007223",
+      "template_type": "template_1",
+      "message": "Preview generated"
+    },
+    {
+      "id": "973cb4ae-4c13-4fb4-9a24-30e1271d6f9a",
+      "file_id": "qr-template",
+      "doc_name": "QR Label",
+      "page_num": 1,
+      "printer": "Preview (macOS)",
+      "status": "success",
+      "timestamp": "2026-04-23T17:56:54.155070",
+      "error": null,
+      "username": "template-user",
+      "barcode": "FOB1NA2R411105MA$2534007223",
+      "template_type": "template_2",
+      "message": "Preview generated"
     }
   ],
   "users": [

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_NAME: brady-text-auto-label
+  PROJECT_NAME: bradylonglabel
 
 jobs:
   deploy:
