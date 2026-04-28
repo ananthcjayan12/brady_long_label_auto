@@ -107,7 +107,8 @@ function TemplateLayoutSettingsPage({ profiles, onSaveProfiles, onBackToPrint })
         const defaults = {
             global: { ...DEFAULT_GLOBAL_LAYOUT },
             template_1: { ...DEFAULT_TEMPLATE_LAYOUTS.template_1 },
-            template_2: { ...DEFAULT_TEMPLATE_LAYOUTS.template_2 }
+            template_2: { ...DEFAULT_TEMPLATE_LAYOUTS.template_2 },
+            template_3: { ...DEFAULT_TEMPLATE_LAYOUTS.template_3 }
         };
         setWorkingProfiles(defaults);
         setStatus({ type: 'success', message: 'All layout settings reset to defaults.' });
@@ -117,7 +118,7 @@ function TemplateLayoutSettingsPage({ profiles, onSaveProfiles, onBackToPrint })
         <div className="container" style={{ maxWidth: '1240px', paddingTop: '40px', paddingBottom: '40px' }}>
             <div className="card" style={{ marginBottom: '16px' }}>
                 <h1 style={{ marginBottom: '8px' }}>Label Layout Settings</h1>
-                <p>Adjust spacing, font type/size, element size and positions for Template 1 and Template 2. Logo is always used for both templates.</p>
+                <p>Adjust spacing, font type/size, element size and positions for Template 1, Template 2, and Template 3. Logo is always used for all templates.</p>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
@@ -164,6 +165,7 @@ function TemplateLayoutSettingsPage({ profiles, onSaveProfiles, onBackToPrint })
                             >
                                 <option value="template_1">Template 1 (First Cell Type)</option>
                                 <option value="template_2">Template 2 (Second Cell Type)</option>
+                                <option value="template_3">Template 3 (Line1 + Barcode + Line3)</option>
                             </select>
                         </div>
 

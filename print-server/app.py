@@ -10,6 +10,7 @@ import datetime
 import uuid
 import subprocess
 import sys
+import re
 from urllib.parse import urlencode
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
@@ -76,6 +77,22 @@ DEFAULT_TEMPLATE_LAYOUTS = {
         'barcode_y_in': 0.02,
         'barcode_height_in': 0.075,
         'barcode_bar_width_in': 0.008
+    },
+    'template_3': {
+        'logo_x_in': 0.32,
+        'logo_top_in': 0.005,
+        'logo_width_in': 0.36,
+        'logo_height_in': 0.0,
+        'line1_font_name': 'Helvetica-Bold',
+        'line1_font_size': 8.4,
+        'line1_y_in': 0.18,
+        'line2_font_name': 'Helvetica-Bold',
+        'line2_font_size': 8.2,
+        'line2_y_in': 0.01,
+        'text_max_width_in': 0.95,
+        'barcode_y_in': 0.06,
+        'barcode_height_in': 0.09,
+        'barcode_bar_width_in': 0.0085
     }
 }
 
@@ -132,6 +149,8 @@ def _normalize_template_type(value):
     candidate = str(value or '').strip().lower()
     if candidate in ('template_2', '2', 'template2'):
         return 'template_2'
+    if candidate in ('template_3', '3', 'template3'):
+        return 'template_3'
     return 'template_1'
 
 
@@ -141,11 +160,11 @@ def _parse_scan_payload(raw_data):
         raise ValueError('QR data is required')
 
     parts = payload.split('$')
-    if len(parts) != 2:
+    if len(parts) < 2:
         raise ValueError('Invalid scan format. Expected <line1>$<line2>.')
-
-    line1 = parts[0].strip().upper()
-    line2 = parts[1].strip()
+    line1 = re.sub(r'[^A-Za-z0-9]', '', parts[0].strip().upper())
+    digit_groups = re.findall(r'\d', parts[1])
+    line2 = ''.join(digit_groups[:10])
 
     if not line1 or not line2:
         raise ValueError('Both line 1 and line 2 are required in QR data.')
@@ -154,6 +173,7 @@ def _parse_scan_payload(raw_data):
     if (not line2.isdigit()) or len(line2) != 10:
         raise ValueError('Line 2 must be exactly 10 digits.')
 
+    payload = f'{line1}${line2}'
     return payload, line1, line2
 
 
@@ -306,37 +326,60 @@ def generate_qr_label_pdf(data, _label='', label_settings=None, template_type='t
         font_name=template_layout['line1_font_name'],
         font_size=template_layout['line1_font_size']
     )
-    _draw_centered_fit_text(
-        c,
-        line2,
-        line2_y,
-        page_width,
-        text_max_width,
-        font_name=template_layout['line2_font_name'],
-        font_size=template_layout['line2_font_size']
-    )
-
-    barcode_height = template_layout['barcode_height_in'] * inch
-    barcode_base_width = template_layout['barcode_bar_width_in']
-
-    barcode = code128.Code128(line2, barHeight=barcode_height, barWidth=barcode_base_width, humanReadable=False)
-    max_barcode_width = max(0.1 * inch, text_max_width)
-    if barcode.width > max_barcode_width:
-        ratio = max_barcode_width / barcode.width
-        barcode = code128.Code128(
+    if template != 'template_3':
+        _draw_centered_fit_text(
+            c,
             line2,
-            barHeight=barcode_height,
-            barWidth=max(0.004, barcode_base_width * ratio),
-            humanReadable=False
+            line2_y,
+            page_width,
+            text_max_width,
+            font_name=template_layout['line2_font_name'],
+            font_size=template_layout['line2_font_size']
         )
 
-    barcode_x = (page_width - barcode.width) / 2
-    barcode_y = _clamp(
-        top_area_y + (template_layout['barcode_y_in'] * inch),
-        top_area_y,
-        top_area_y + max(0.0, top_printable_height - barcode_height)
-    )
-    barcode.drawOn(c, barcode_x, barcode_y)
+    if template == 'template_3':
+        barcode_height = template_layout['barcode_height_in'] * inch
+        # Layout settings store barcode width in inches; ReportLab expects points.
+        barcode_base_width = template_layout['barcode_bar_width_in'] * inch
+
+        barcode = code128.Code128(line2, barHeight=barcode_height, barWidth=barcode_base_width, humanReadable=False)
+        barcode.humanReadable = False
+        barcode.fontSize = 0
+        max_barcode_width = max(0.1 * inch, text_max_width)
+        if barcode.width > max_barcode_width:
+            ratio = max_barcode_width / barcode.width
+            barcode = code128.Code128(
+                line2,
+                barHeight=barcode_height,
+                barWidth=max(0.004 * inch, barcode_base_width * ratio),
+                humanReadable=False
+            )
+            barcode.humanReadable = False
+            barcode.fontSize = 0
+
+        barcode_x = (page_width - barcode.width) / 2
+        barcode_y = _clamp(
+            top_area_y + (template_layout['barcode_y_in'] * inch),
+            top_area_y,
+            top_area_y + max(0.0, top_printable_height - barcode_height)
+        )
+        barcode.drawOn(c, barcode_x, barcode_y)
+
+        # Template 3 layout: line1 -> barcode -> line2
+        third_line_y = _clamp(
+            top_area_y + (template_layout['line2_y_in'] * inch),
+            top_area_y + 0.5,
+            top_area_y + max(0.5, template_layout['barcode_y_in'] * inch - 2.0)
+        )
+        _draw_centered_fit_text(
+            c,
+            line2,
+            third_line_y,
+            page_width,
+            text_max_width,
+            font_name=template_layout['line2_font_name'],
+            font_size=template_layout['line2_font_size']
+        )
 
     c.setAuthor('QR Label Print Template')
     c.setTitle(f'{template}:{payload}')

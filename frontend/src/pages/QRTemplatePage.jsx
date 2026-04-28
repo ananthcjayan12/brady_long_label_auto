@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Printer, RefreshCw, Server } from 'lucide-react';
 import { api } from '../api';
 import { buildLabelSettingsPayload, loadLayoutProfiles } from '../qrLayoutSettings';
@@ -16,26 +16,26 @@ function parseScanPayload(value) {
     }
 
     const parts = payload.split('$');
-    if (parts.length !== 2) {
+    if (parts.length < 2) {
         return { payload, line1: '', line2: '', error: 'Invalid scan format. Use: <line1>$<line2>' };
     }
-
     const line1 = parts[0].trim().toUpperCase();
-    const line2 = parts[1].trim();
+    const line2 = parts[1].replace(/\D/g, '');
+    const normalizedPayload = `${line1}$${line2}`;
 
     if (!line1 || !line2) {
-        return { payload, line1, line2, error: 'Both line 1 and line 2 are required.' };
+        return { payload: normalizedPayload, line1, line2, error: 'Both line 1 and line 2 are required.' };
     }
 
     if (![15, 16].includes(line1.length)) {
-        return { payload, line1, line2, error: 'Line 1 must be 15 or 16 characters.' };
+        return { payload: normalizedPayload, line1, line2, error: 'Line 1 must be 15 or 16 characters.' };
     }
 
     if (!/^\d{10}$/.test(line2)) {
-        return { payload, line1, line2, error: 'Line 2 must be exactly 10 digits.' };
+        return { payload: normalizedPayload, line1, line2, error: 'Line 2 must be exactly 10 digits.' };
     }
 
-    return { payload, line1, line2, error: '' };
+    return { payload: normalizedPayload, line1, line2, error: '' };
 }
 
 function QRTemplatePage({ layoutProfiles, onOpenSettings }) {
@@ -47,6 +47,14 @@ function QRTemplatePage({ layoutProfiles, onOpenSettings }) {
     const [selectedPrinter, setSelectedPrinter] = useState(localStorage.getItem('selected_printer') || '');
     const [loadingPrinters, setLoadingPrinters] = useState(false);
     const [printing, setPrinting] = useState(false);
+    const [autoPrintEnabled, setAutoPrintEnabled] = useState(localStorage.getItem('qr_auto_print_enabled') === 'true');
+    const [autoPrintDelay, setAutoPrintDelay] = useState(() => {
+        const saved = localStorage.getItem('auto_print_delay');
+        const parsed = saved ? parseInt(saved, 10) : 3;
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : 3;
+    });
+    const autoPrintTimerRef = useRef(null);
+    const lastPrintedPayloadRef = useRef('');
 
     const parsedPayload = useMemo(() => parseScanPayload(qrData), [qrData]);
     const activeLayoutProfiles = useMemo(
@@ -76,6 +84,8 @@ function QRTemplatePage({ layoutProfiles, onOpenSettings }) {
         localStorage.setItem('api_url', normalizedUrl);
         localStorage.setItem('selected_printer', selectedPrinter);
         localStorage.setItem('template_type', templateType);
+        localStorage.setItem('qr_auto_print_enabled', autoPrintEnabled ? 'true' : 'false');
+        localStorage.setItem('auto_print_delay', String(autoPrintDelay));
         setStatus({ type: 'success', message: 'Template settings saved.' });
     };
 
@@ -130,6 +140,7 @@ function QRTemplatePage({ layoutProfiles, onOpenSettings }) {
 
         setPrinting(true);
         setStatus({ type: 'loading', message: 'Sending print job...' });
+        lastPrintedPayloadRef.current = parsedPayload.payload;
 
         try {
             const response = await api.printQrLabel({
@@ -158,6 +169,30 @@ function QRTemplatePage({ layoutProfiles, onOpenSettings }) {
             setPrinting(false);
         }
     };
+
+    useEffect(() => {
+        if (autoPrintTimerRef.current) {
+            clearTimeout(autoPrintTimerRef.current);
+            autoPrintTimerRef.current = null;
+        }
+        if (!autoPrintEnabled || printing || parsedPayload.error || !parsedPayload.payload) {
+            return;
+        }
+        if (parsedPayload.payload === lastPrintedPayloadRef.current) {
+            return;
+        }
+
+        autoPrintTimerRef.current = setTimeout(() => {
+            onPrint();
+        }, Math.max(0, autoPrintDelay) * 1000);
+
+        return () => {
+            if (autoPrintTimerRef.current) {
+                clearTimeout(autoPrintTimerRef.current);
+                autoPrintTimerRef.current = null;
+            }
+        };
+    }, [autoPrintEnabled, autoPrintDelay, parsedPayload.payload, parsedPayload.error, printing, templateType]);
 
     return (
         <div className="container" style={{ maxWidth: '960px', paddingTop: '40px', paddingBottom: '40px' }}>
@@ -215,7 +250,35 @@ function QRTemplatePage({ layoutProfiles, onOpenSettings }) {
                     >
                         <option value="template_1">Template 1 (First Cell Type)</option>
                         <option value="template_2">Template 2 (Second Cell Type)</option>
+                        <option value="template_3">Template 3 (Line1 + Barcode + Line3)</option>
                     </select>
+
+                    <label style={{ fontSize: '13px', fontWeight: 500 }}>Auto Print</label>
+                    <div style={{ marginTop: '6px', marginBottom: '10px', display: 'grid', gap: '8px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                            <input
+                                type="checkbox"
+                                checked={autoPrintEnabled}
+                                onChange={(e) => setAutoPrintEnabled(e.target.checked)}
+                            />
+                            Auto print after valid scan data is entered
+                        </label>
+                        <div>
+                            <label style={{ fontSize: '13px', fontWeight: 500 }}>Delay (seconds)</label>
+                            <input
+                                className="input"
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={autoPrintDelay}
+                                onChange={(e) => {
+                                    const parsed = parseInt(e.target.value, 10);
+                                    setAutoPrintDelay(Number.isFinite(parsed) && parsed >= 0 ? parsed : 0);
+                                }}
+                                style={{ marginTop: '6px' }}
+                            />
+                        </div>
+                    </div>
 
                     <label style={{ fontSize: '13px', fontWeight: 500 }}>Active Label Measurement</label>
                     <p style={{ marginTop: '6px', marginBottom: '16px', fontSize: '13px' }}>

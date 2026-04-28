@@ -47,6 +47,22 @@ export const DEFAULT_TEMPLATE_LAYOUTS = {
         barcode_y_in: 0.02,
         barcode_height_in: 0.075,
         barcode_bar_width_in: 0.008
+    },
+    template_3: {
+        logo_x_in: 0.32,
+        logo_top_in: 0.005,
+        logo_width_in: 0.36,
+        logo_height_in: 0,
+        line1_font_name: 'Helvetica-Bold',
+        line1_font_size: 8.4,
+        line1_y_in: 0.18,
+        line2_font_name: 'Helvetica-Bold',
+        line2_font_size: 8.2,
+        line2_y_in: 0.01,
+        text_max_width_in: 0.95,
+        barcode_y_in: 0.06,
+        barcode_height_in: 0.09,
+        barcode_bar_width_in: 0.0085
     }
 };
 
@@ -54,7 +70,8 @@ export function getDefaultLayoutProfiles() {
     return {
         global: { ...DEFAULT_GLOBAL_LAYOUT },
         template_1: { ...DEFAULT_TEMPLATE_LAYOUTS.template_1 },
-        template_2: { ...DEFAULT_TEMPLATE_LAYOUTS.template_2 }
+        template_2: { ...DEFAULT_TEMPLATE_LAYOUTS.template_2 },
+        template_3: { ...DEFAULT_TEMPLATE_LAYOUTS.template_3 }
     };
 }
 
@@ -96,7 +113,8 @@ export function normalizeLayoutProfiles(rawProfiles) {
             top_printable_height_in: sanitizeNumber(raw?.global?.top_printable_height_in, defaults.global.top_printable_height_in)
         },
         template_1: sanitizeTemplateLayout(raw.template_1, defaults.template_1),
-        template_2: sanitizeTemplateLayout(raw.template_2, defaults.template_2)
+        template_2: sanitizeTemplateLayout(raw.template_2, defaults.template_2),
+        template_3: sanitizeTemplateLayout(raw.template_3, defaults.template_3)
     };
 }
 
@@ -122,7 +140,7 @@ export function saveLayoutProfiles(profiles) {
 
 export function buildLabelSettingsPayload(profiles, templateType) {
     const normalized = normalizeLayoutProfiles(profiles);
-    const template = templateType === 'template_2' ? 'template_2' : 'template_1';
+    const template = ['template_1', 'template_2', 'template_3'].includes(templateType) ? templateType : 'template_1';
     return {
         ...normalized.global,
         ...normalized[template]
