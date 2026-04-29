@@ -158,6 +158,8 @@ function QRTemplatePage({ layoutProfiles, onOpenSettings }) {
             }
 
             if (response.success) {
+                setQrData('');
+                lastPrintedPayloadRef.current = '';
                 setStatus({ type: 'success', message: response.message || 'Print sent successfully.' });
             } else {
                 setStatus({ type: 'error', message: response.error || 'Print failed.' });
